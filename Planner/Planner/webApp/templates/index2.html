@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Only</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+        ul {
+            white-space: pre-line;
+        }
+
+        #map-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            justify-content: flex-end;
+            height: 100vh;
+        }
+
+        #map {
+            width: 50%;
+            height: 100%;
+        }
+
+        #chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        #api-response {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+
+        #messages {
+            list-style-type: none;
+            padding: 0;
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            margin-top: 50px;
+        }
+
+        #messages li {
+            margin-bottom: 10px;
+        }
+
+        #form {
+            display: flex;
+            flex-direction: row;
+        }
+
+        #input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+
+<body>
+    <div id="map-container">
+        <div id="chat-container">
+            <div id="api-response"></div>
+            <ul id="messages"></ul>
+            <form id="form" action="">
+                <input id="input" autocomplete="off" />
+                <button type="submit">Send</button>
+            </form>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var map = L.map('map').setView([41.1579, -8.6291], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            fetch('http://127.0.0.1:8000/create-chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => response.json())
+                .then(data => {
+                    var threadId = data.threadId;
+                    document.getElementById('api-response').innerText = JSON.stringify(data);
+
+                    document.getElementById('form').addEventListener('submit', function (event) {
+                        event.preventDefault();
+
+                        var messageContent = document.getElementById('input').value;
+                        console.log(messageContent)
+                        displayMessage(messageContent);
+                        var body = JSON.stringify({
+                            content: messageContent,
+                            threadId: JSON.stringify(data).slice(1, -1)
+                        });
+
+                        fetch('http://127.0.0.1:8000/send-message', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: body,
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data)
+                                displayMessage(data.message)
+                                updateMapWithRoute(data.display,data.startLocationLat,data.startLocationLong,data.endLocationLat,data.endLocationLong)
+                                console.log(data);
+                            })
+                            .catch(error => {
+                                console.error('Error sending message:', error);
+                            });
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+
+                function displayMessage(content) {
+                    console.log("chega aqui");
+            var messagesList = document.getElementById('messages');
+            var messageItem = document.createElement('li');
+            messageItem.innerHTML = formatMessage(content);
+            messagesList.appendChild(messageItem);
+
+            // Optionally, scroll to the bottom of the messages list
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
+
+        function formatMessage(content) {
+            // Use a regular expression to find links in the message content
+            var linkRegex = /(?:https?|ftp):\/\/[^\s]+/g;
+            var formattedContent = content.replace(linkRegex, function (url) {
+                // Wrap each link with an anchor tag
+                return '<a href="' + url + '" target="_blank">' + url + '</a>';
+            });
+
+            return formattedContent;
+        }
+
+
+            function updateMapWithRoute(routeData,startLat,startLong,endLat,endLong) {
+                // Clear existing markers and polylines
+                map.eachLayer(function (layer) {
+                    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                //routeData = JSON.parse(routeData)
+                //console.log(routeData)
+                //var polylinePoints = routeData.routes[0].overview_polyline.points;
+                console.log(routeData)
+                var decodedPoints = decode(routeData);
+
+                //var startLocation = routeData.routes[0].legs[0].start_location;
+                var mapCenter = [startLat, startLong];
+
+                // Assuming 'm' is your Folium map object
+                // Adding markers for start and end locations
+                // Adding markers for start and end locations without custom icons
+                L.marker([startLat,startLong ]).addTo(map).bindPopup('Start Location');
+
+                //var endLocation = routeData.routes[0].legs[0].end_location;
+                L.marker([endLat, endLong]).addTo(map).bindPopup('End Location');
+
+                // Adding the polyline to the map
+                L.polyline(decodedPoints, { color: 'blue', weight: 5, opacity: 0.7 }).addTo(map);
+                console.log(routeData)
+            }
+
+            // Function to decode encoded polyline points
+            function decode(encoded) {
+                var points = [];
+                var index = 0, len = encoded.length;
+                var lat = 0, lng = 0;
+
+                while (index < len) {
+                    var b, shift = 0, result = 0;
+
+                    do {
+                        b = encoded.charCodeAt(index++) - 63;
+                        result |= (b & 0x1f) << shift;
+                        shift += 5;
+                    } while (b >= 0x20);
+
+                    var dlat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+                    lat += dlat;
+
+                    shift = 0;
+                    result = 0;
+
+                    do {
+                        b = encoded.charCodeAt(index++) - 63;
+                        result |= (b & 0x1f) << shift;
+                        shift += 5;
+                    } while (b >= 0x20);
+
+                    var dlng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+                    lng += dlng;
+
+                    points.push([lat / 1e5, lng / 1e5]);
+                }
+
+                return points;
+            }
+        });
+    </script>
+</body>
+
+</html>
