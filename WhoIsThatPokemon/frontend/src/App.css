@@ -1,0 +1,64 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+input {
+  padding: 10px;
+  font-size: 16px;
+  margin: 10px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+p {
+  margin: 5px 0;
+}
+
+.hints-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.hint-box {
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 16px;
+  width: 100px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.hint-box.yes {
+  background-color: green;
+  color: white;
+}
+
+.hint-box.no {
+  background-color: red;
+  color: white;
+}

@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+Flask-JWT-Extended
+Flask-Marshmallow
+marshmallow-sqlalchemy
+flask_talisman
+flask_limiter
+flask_migrate
+cryptography
