@@ -1,9 +1,11 @@
 Flask
-Flask-SQLAlchemy
 Flask-JWT-Extended
-Flask-Marshmallow
-marshmallow-sqlalchemy
-flask_talisman
-flask_limiter
-flask_migrate
+firebase-admin
+flask-limiter
+flask-cors
+flask-talisman
 cryptography
+google-cloud-storage
+setuptools
+pyrebase4
+pytest
