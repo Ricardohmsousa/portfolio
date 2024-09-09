@@ -56,7 +56,10 @@ def register():
             email=data['email'],
             password=data['password']
         )
-        
+        user = auth_client.sign_in_with_email_and_password(data['email'], data['password'])
+        print("antes email")
+        content =auth_client.send_email_verification(user['idToken'])
+        print(content)
         # Save additional user data to Firestore
         user_data = {
             'username': data['username'],
@@ -64,10 +67,11 @@ def register():
             'created_at': datetime.utcnow()
         }
         db.collection('users').document(user_record.uid).set(user_data)
-        
-        return jsonify({"message": "User created successfully", "user_id": user_record.uid}), 201
+
+        return jsonify({"message": "User created successfully. Please check your email for verification.", "user_id": user_record.uid}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # User Login Route
 @app.route('/login', methods=['POST'])
@@ -77,16 +81,40 @@ def login():
         data = request.get_json()
         if not data:
             return jsonify({"error": "Invalid JSON"}), 400
-        
+
         # Authenticate with Firebase Authentication
         user = auth_client.sign_in_with_email_and_password(data['email'], data['password'])
         uid = user['localId']
+        
+        # Check if email is verified
+        user_info = auth_client.get_account_info(user['idToken'])
+        if not user_info['users'][0]['emailVerified']:
+            return jsonify({"error": "Email not verified. Please verify your email before logging in."}), 403
 
         # Create JWT token
         access_token = create_access_token(identity=uid)
         return jsonify(access_token=access_token), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+# Reset Password Route
+@app.route('/reset_password', methods=['POST'])
+@limiter.limit("5 per minute")
+def reset_password():
+    try:
+        data = request.get_json()
+        if not data or 'email' not in data:
+            return jsonify({"error": "Email is required"}), 400
+
+        email = data['email']
+        
+        # Firebase Authentication: Send Password Reset Email
+        auth_client.send_password_reset_email(email)
+        
+        return jsonify({"message": "Password reset email sent. Please check your inbox."}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 
 # Create Salon Route (Firestore)
 @app.route('/salon', methods=['POST'])
